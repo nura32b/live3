@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Multi Streaming Tool - Web UI</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      h1,
+      h2 {
+        text-align: center;
+      }
+      .header-info {
+        text-align: center;
+        margin-bottom: 20px;
+        padding: 10px;
+        background-color: #e9ecef;
+        border-radius: 8px;
+      }
+      #vps-clock {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #007bff;
+      }
+      /* BARU: Style untuk statistik sistem */
+      .system-stats {
+        display: flex;
+        justify-content: space-around;
+        text-align: center;
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+      }
+      .stat-item {
+        flex-basis: 25%;
+      }
+      .stat-item h4 {
+        margin: 0 0 5px 0;
+        color: #495057;
+      }
+      .stat-item p {
+        margin: 0;
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #343a40;
+      }
+
+      .session {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        background-color: #fafafa;
+      }
+      .session-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        align-items: center;
+      }
+      .session input,
+      .session select {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      .session button {
+        padding: 8px 12px;
+        cursor: pointer;
+        border: none;
+        color: white;
+        border-radius: 4px;
+      }
+      .btn-start {
+        background-color: #28a745;
+      }
+      .btn-stop {
+        background-color: #dc3545;
+      }
+      .btn-save {
+        background-color: #007bff;
+      }
+      .btn-remove {
+        background-color: #6c757d;
+      }
+      .status-indicator {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+      .status-Idle,
+      .status-Stopped {
+        background-color: #dc3545;
+      }
+      .status-LIVE {
+        background-color: #28a745;
+        animation: pulse 1.5s infinite;
+      }
+      .status-Scheduled {
+        background-color: #ffc107;
+      }
+      .status-Error {
+        background-color: #333;
+      }
+      .log {
+        font-family: monospace;
+        font-size: 11px;
+        color: #555;
+        background-color: #eee;
+        padding: 5px;
+        border-radius: 4px;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .top-buttons {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        text-align: center;
+      }
+      .alert-success {
+        color: #155724;
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Multi Streaming Tool</h1>
+
+      <div class="header-info">
+        Waktu Server (VPS) Saat Ini (WIB/GMT+7)
+        <div id="vps-clock">Memuat...</div>
+      </div>
+
+      <div class="system-stats">
+        <div class="stat-item">
+          <h4>CPU</h4>
+          <p id="cpu-usage">-%</p>
+        </div>
+        <div class="stat-item">
+          <h4>RAM</h4>
+          <p id="ram-usage">-% ( - / - GB)</p>
+        </div>
+        <div class="stat-item">
+          <h4>Upload</h4>
+          <p id="upload-speed">- Mbps</p>
+        </div>
+        <div class="stat-item">
+          <h4>Download</h4>
+          <p id="download-speed">- Mbps</p>
+        </div>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <div class="top-buttons">
+        <form action="/add_session" method="post" style="display: inline">
+          <button type="submit">+ Tambah Sesi</button>
+        </form>
+        <form action="/save_config" method="post" style="display: inline">
+          <button type="submit" class="btn-save">Simpan Konfigurasi</button>
+        </form>
+        <form action="/load_config" method="post" style="display: inline">
+          <button type="submit">Muat Konfigurasi</button>
+        </form>
+        <a
+          href="{{ url_for('manage_files') }}"
+          style="
+            display: inline-block;
+            background-color: #17a2b8;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            vertical-align: middle;
+          "
+          >Manajemen Video</a
+        >
+      </div>
+
+      <hr />
+
+      <div id="sessions-container">
+        {% for session_id, session in sessions.items() %}
+        <div class="session" id="session-{{ session_id }}">
+          <form
+            action="{{ url_for('update_session', session_id=session_id) }}"
+            method="post"
+          >
+            <div class="session-grid">
+              <input
+                type="text"
+                name="title"
+                placeholder="Judul Stream"
+                value="{{ session.title }}"
+              />
+              <input
+                type="password"
+                name="stream_key"
+                placeholder="Stream Key"
+                value="{{ session.stream_key }}"
+              />
+
+              <div>
+                <label for="video_file_selector-{{session_id}}"
+                  >Pilih Video:</label
+                >
+                <select
+                  name="video_file_selector"
+                  id="video_file_selector-{{session_id}}"
+                >
+                  <option value="">-- Pilih Video --</option>
+                </select>
+                <small
+                  >Video saat ini: {{ session.video_path.split('/')[-1] if
+                  session.video_path else "Belum dipilih" }}</small
+                >
+              </div>
+
+              <input
+                type="text"
+                name="duration"
+                placeholder="Durasi (hh:mm:ss)"
+                value="{{ session.duration }}"
+              />
+
+              <div>
+                <label for="schedule-{{session_id}}"
+                  >Jadwalkan (Tanggal & Jam):</label
+                >
+                <input
+                  type="datetime-local"
+                  id="schedule-{{session_id}}"
+                  name="schedule_datetime"
+                />
+              </div>
+
+              <button type="submit" class="btn-save">
+                Simpan Perubahan & Jadwal
+              </button>
+            </div>
+          </form>
+          <hr style="margin: 15px 0" />
+          <div class="session-grid">
+            <div>
+              <strong>Status:</strong>
+              <span
+                id="indicator-{{ session_id }}"
+                class="status-indicator status-{{ session.status }}"
+              ></span>
+              <span id="status-text-{{ session_id }}"
+                >{{ session.status }}</span
+              >
+              {% if session.status == 'Scheduled' %}
+              <small id="schedule-time-{{session_id}}"
+                >({{ session.schedule_time }})</small
+              >
+              {% endif %}
+            </div>
+            <strong id="duration-{{ session_id }}"
+              >Durasi Live: 00:00:00</strong
+            >
+
+            <form
+              action="{{ url_for('start_stream', session_id=session_id) }}"
+              method="post"
+              style="display: inline"
+            >
+              <button type="submit" class="btn-start">▶ Start</button>
+            </form>
+            <form
+              action="{{ url_for('stop_stream', session_id=session_id) }}"
+              method="post"
+              style="display: inline"
+            >
+              <button type="submit" class="btn-stop">■ Stop</button>
+            </form>
+            <form
+              action="{{ url_for('remove_session', session_id=session_id) }}"
+              method="post"
+              style="display: inline"
+            >
+              <button type="submit" class="btn-remove">Hapus</button>
+            </form>
+          </div>
+          <div class="log" id="log-{{ session_id }}">Log: -</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  </body>
+</html>
